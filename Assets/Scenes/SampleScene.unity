@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 119950128}
   - component: {fileID: 119950129}
   - component: {fileID: 119950130}
+  - component: {fileID: 119950131}
   m_Layer: 6
   m_Name: Player
   m_TagString: Player
@@ -197,6 +198,22 @@ MonoBehaviour:
     m_Bits: 4294967295
   groundDetectionDistance: 2
   cooldown: 0.35
+--- !u!114 &119950131
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 119950127}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 028370e4eb154748868c763c21c95498, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
+  moveSpeed: 4
+  rotationSpeed: 12
+  cameraTransform: {fileID: 2146452798}
+  gravity: -20
 --- !u!1 &274929563
 GameObject:
   m_ObjectHideFlags: 0
@@ -1511,6 +1528,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2146452798}
+  - component: {fileID: 2146452799}
   m_Layer: 0
   m_Name: Cameras
   m_TagString: Untagged
@@ -1535,6 +1553,22 @@ Transform:
   - {fileID: 1525535136}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 49.714, y: 0, z: 0}
+--- !u!114 &2146452799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2146452797}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05d1d6e3e1b447908a98360c71dec39b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
+  target: {fileID: 119950128}
+  offset: {x: 0, y: 14, z: -10}
+  followSpeed: 8
+  lookAtTarget: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
