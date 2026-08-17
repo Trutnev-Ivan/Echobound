@@ -5,6 +5,9 @@ public class SoundPulseManager : MonoBehaviour
     public static SoundPulseManager Instance { get; private set; }
 
     private const int MaxPulses = 8;
+    private const int OcclusionRayCount = 96;
+    private const int MaxOcclusionSamples =
+        MaxPulses * OcclusionRayCount;
 
     [Header("Pulse")]
     [SerializeField]
@@ -22,6 +25,13 @@ public class SoundPulseManager : MonoBehaviour
     [Header("Tap Refresh")]
     [SerializeField]
     private float mergeDistance = 1.5f;
+
+    [Header("Obstacles")]
+    [SerializeField]
+    private LayerMask obstacleMask = ~(1 << 6);
+
+    [SerializeField, Min(0f)]
+    private float obstacleRayHeight = 0.35f;
 
     private readonly Vector4[] pulseOrigins =
         new Vector4[MaxPulses];
@@ -43,6 +53,9 @@ public class SoundPulseManager : MonoBehaviour
 
     private readonly float[] pulseActives =
         new float[MaxPulses];
+
+    private readonly float[] pulseOcclusionDistances =
+        new float[MaxOcclusionSamples];
     
     private static readonly int PulseOriginsId =
         Shader.PropertyToID("_PulseOrigins");
@@ -55,6 +68,9 @@ public class SoundPulseManager : MonoBehaviour
 
     private static readonly int PulseActivesId =
         Shader.PropertyToID("_PulseActives");
+
+    private static readonly int PulseOcclusionDistancesId =
+        Shader.PropertyToID("_PulseOcclusionDistances");
 
     private static readonly int PulseWidthId =
         Shader.PropertyToID("_PulseWidth");
@@ -115,6 +131,52 @@ public class SoundPulseManager : MonoBehaviour
         pulseFadeTimers[pulseIndex] = 0f;
         pulseIntensities[pulseIndex] = 1f;
         pulseActive[pulseIndex] = true;
+
+        BuildOcclusionDistances(
+            pulseIndex,
+            worldPosition
+        );
+    }
+
+    private void BuildOcclusionDistances(
+        int pulseIndex,
+        Vector3 worldPosition)
+    {
+        int startIndex =
+            pulseIndex * OcclusionRayCount;
+
+        Vector3 rayOrigin =
+            worldPosition + Vector3.up * obstacleRayHeight;
+
+        for (int i = 0; i < OcclusionRayCount; i++)
+        {
+            float angle =
+                (Mathf.PI * 2f * i) /
+                OcclusionRayCount;
+
+            Vector3 direction =
+                new Vector3(
+                    Mathf.Cos(angle),
+                    0f,
+                    Mathf.Sin(angle)
+                );
+
+            float visibleDistance = maxRadius;
+
+            if (Physics.Raycast(
+                    rayOrigin,
+                    direction,
+                    out RaycastHit hit,
+                    maxRadius,
+                    obstacleMask,
+                    QueryTriggerInteraction.Ignore))
+            {
+                visibleDistance = hit.distance;
+            }
+
+            pulseOcclusionDistances[startIndex + i] =
+                visibleDistance;
+        }
     }
 
     private void UpdatePulses()
@@ -254,6 +316,11 @@ public class SoundPulseManager : MonoBehaviour
             pulseActives
         );
 
+        Shader.SetGlobalFloatArray(
+            PulseOcclusionDistancesId,
+            pulseOcclusionDistances
+        );
+
         Shader.SetGlobalFloat(
             PulseWidthId,
             pulseWidth
@@ -286,6 +353,11 @@ public class SoundPulseManager : MonoBehaviour
             pulseFadeTimers[i] = 0f;
             pulseActives[i] = 0f;
             pulseActive[i] = false;
+
+            int startIndex = i * OcclusionRayCount;
+
+            for (int j = 0; j < OcclusionRayCount; j++)
+                pulseOcclusionDistances[startIndex + j] = maxRadius;
         }
     }
 

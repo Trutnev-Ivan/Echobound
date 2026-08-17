@@ -31,6 +31,8 @@ Shader "Hidden/SoundVision"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
             #define MAX_PULSES 8
+            #define OCCLUSION_RAY_COUNT 96
+            #define PI 3.14159265359
 
             struct Attributes
             {
@@ -47,6 +49,7 @@ Shader "Hidden/SoundVision"
             float _PulseRadii[MAX_PULSES];
             float _PulseIntensities[MAX_PULSES];
             float _PulseActives[MAX_PULSES];
+            float _PulseOcclusionDistances[MAX_PULSES * OCCLUSION_RAY_COUNT];
 
             float _PulseWidth;
             float _PulseSpeed;
@@ -55,6 +58,51 @@ Shader "Hidden/SoundVision"
 
             half4 _WaveColor;
             half4 _BackgroundColor;
+
+            float SampleOcclusionDistance(
+                int pulseIndex,
+                float2 direction)
+            {
+                float angle =
+                    atan2(direction.y, direction.x);
+
+                if (angle < 0.0)
+                    angle += PI * 2.0;
+
+                float rayPosition =
+                    angle / (PI * 2.0) *
+                    OCCLUSION_RAY_COUNT;
+
+                int rayA =
+                    (int)floor(rayPosition) %
+                    OCCLUSION_RAY_COUNT;
+
+                int rayB =
+                    (rayA + 1) %
+                    OCCLUSION_RAY_COUNT;
+
+                float blend =
+                    frac(rayPosition);
+
+                int baseIndex =
+                    pulseIndex * OCCLUSION_RAY_COUNT;
+
+                float distanceA =
+                    _PulseOcclusionDistances[
+                        baseIndex + rayA
+                    ];
+
+                float distanceB =
+                    _PulseOcclusionDistances[
+                        baseIndex + rayB
+                    ];
+
+                return lerp(
+                    distanceA,
+                    distanceB,
+                    blend
+                );
+            }
 
             Varyings Vert(Attributes input)
             {
@@ -222,10 +270,32 @@ Shader "Hidden/SoundVision"
                     float pulseIntensity =
                         _PulseIntensities[i];
 
+                    float2 fromPulse =
+                        centerPosition.xz -
+                        pulseOrigin.xz;
+
                     float distanceFromOrigin =
-                        distance(
-                            centerPosition,
-                            pulseOrigin
+                        length(fromPulse);
+
+                    float2 pulseDirection =
+                        distanceFromOrigin > 0.0001
+                            ? fromPulse / distanceFromOrigin
+                            : float2(1.0, 0.0);
+
+                    float occlusionDistance =
+                        SampleOcclusionDistance(
+                            i,
+                            pulseDirection
+                        );
+
+                    float obstacleVisibility =
+                        1.0 -
+                        smoothstep(
+                            occlusionDistance +
+                                _PulseWidth * 0.2,
+                            occlusionDistance +
+                                _PulseWidth * 0.9,
+                            distanceFromOrigin
                         );
 
                     // За пределами конкретной волны
@@ -270,6 +340,7 @@ Shader "Hidden/SoundVision"
                         waveFront *
                         waveEndFade *
                         insideRadius *
+                        obstacleVisibility *
                         pulseIntensity;
 
                     // Всё, через что фронт уже прошёл,
@@ -283,6 +354,7 @@ Shader "Hidden/SoundVision"
                     float currentReveal =
                         reached *
                         insideRadius *
+                        obstacleVisibility *
                         pulseIntensity;
 
                     totalWave =
